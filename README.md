@@ -86,12 +86,27 @@ Feel free to submit issues and enhancement requests. Follow these steps to contr
 
 Hoàng Gia Thịnh
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Acknowledgments
 
 - Built using System.Drawing for .NET
 - Selenium WebDriver for web automation
 - ImportExcel module for Excel processing
+
+## References
+
+### Official Documentation
+- [PowerShell Documentation](https://docs.microsoft.com/en-us/powershell/)
+- [Selenium WebDriver Documentation](https://www.selenium.dev/documentation/webdriver/)
+- [System.Drawing Namespace](https://docs.microsoft.com/en-us/dotnet/api/system.drawing)
+
+### Tools and Dependencies
+- [ChromeDriver Downloads](https://chromedriver.chromium.org/downloads)
+- [ImportExcel Module](https://github.com/dfinke/ImportExcel)
+- [Selenium WebDriver for PowerShell](https://www.powershellgallery.com/packages/Selenium)
+
+### Useful Resources
+- [PowerShell: Automatically Fill Online Form with data read from Spreadsheet](https://www.youtube.com/watch?v=G6Ea3FCWLA4)
+- [PowerShell: Resize-Image] (https://gist.github.com/someshinyobject/617bf00556bc43af87cd)
+- [Powershell use .NET .DrawImage in System.Drawing] (https://stackoverflow.com/questions/55001057/powershell-use-net-drawimage-in-system-drawing)
+- [How can I get PowerShell to read data in an Excel spreadsheet and apply to AD?] (https://community.spiceworks.com/t/how-can-i-get-powershell-to-read-data-in-an-excel-spreadsheet-and-apply-to-ad/818942/2)
+
