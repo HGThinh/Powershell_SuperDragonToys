@@ -105,7 +105,7 @@ Hoàng Gia Thịnh
 - [Selenium WebDriver for PowerShell](https://www.powershellgallery.com/packages/Selenium)
 
 ### Useful Resources
-- [PowerShell: Automatically Fill Online Form with data read from Spreadsheet](https://www.youtube.com/watch?v=G6Ea3FCWLA4)
+- [PowerShell: Automatically Fill Online Form with data read from Spreadsheet] (https://www.youtube.com/watch?v=G6Ea3FCWLA4)
 - [PowerShell: Resize-Image] (https://gist.github.com/someshinyobject/617bf00556bc43af87cd)
 - [Powershell use .NET .DrawImage in System.Drawing] (https://stackoverflow.com/questions/55001057/powershell-use-net-drawimage-in-system-drawing)
 - [How can I get PowerShell to read data in an Excel spreadsheet and apply to AD?] (https://community.spiceworks.com/t/how-can-i-get-powershell-to-read-data-in-an-excel-spreadsheet-and-apply-to-ad/818942/2)
