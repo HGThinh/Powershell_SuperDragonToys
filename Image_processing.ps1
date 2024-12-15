@@ -18,10 +18,10 @@
 .EXAMPLE
     Process-Image -InputPath "C:\input\photo.jpg" -OutputPath "C:\output\processed_photo.jpg" -WatermarkText "© Your Name"
 .NOTES
-    Author      : Hoang Gia Thinh
-    Created     : 16/12/2024
+    Author      : Hoàng Gia Thịnh
+    Created     : 24/11/2024
     Modified    : 16/12/2024
-    Version     : 1.0
+    Version     : 1.1
     Dependencies: System.Drawing assembly
 .LINK
     https://docs.microsoft.com/en-us/dotnet/api/system.drawing
