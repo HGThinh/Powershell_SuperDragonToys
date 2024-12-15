@@ -1,5 +1,30 @@
 # Requires -Module System.Drawing
-
+.SYNOPSIS
+    Image Processing and Watermarking PowerShell Script
+.DESCRIPTION
+    This script provides a function to process images by:
+    - Resizing to a target square dimension (default 600x600)
+    - Centering the original image 
+    - Adding a watermark text
+    - Preserving image quality with high-quality rendering
+.PARAMETER InputPath
+    Full path to the input image file that needs to be processed.
+.PARAMETER OutputPath
+    Full path where the processed image will be saved.
+.PARAMETER WatermarkText
+    Optional text to be added as a watermark on the image. Defaults to an empty string.
+.PARAMETER TargetSize
+    Optional target size for the square output image. Defaults to 600 pixels.
+.EXAMPLE
+    Process-Image -InputPath "C:\input\photo.jpg" -OutputPath "C:\output\processed_photo.jpg" -WatermarkText "© Your Name"
+.NOTES
+    Author      : Hoang Gia Thinh
+    Created     : 16/12/2024
+    Modified    : 16/12/2024
+    Version     : 1.0
+    Dependencies: System.Drawing assembly
+.LINK
+    https://docs.microsoft.com/en-us/dotnet/api/system.drawing
 Add-Type -AssemblyName System.Drawing
 
 function Process-Image {
