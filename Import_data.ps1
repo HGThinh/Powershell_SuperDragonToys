@@ -17,26 +17,36 @@
 .NOTES
     Author      : Hoàng Gia Thịnh
     Created     : 24/11/2024
-    Modified    : 24/11/2024
-    Version     : 1.0
+    Modified    : 16/12/2024
+    Version     : 1.1
     Dependencies: Selenium WebDriver, ImportExcel module
 
 .LINK
     https://chromedriver.chromium.org/downloads
 #>
 
+# Parameters
+param (
+    [Parameter(Mandatory = $false, HelpMessage = "Array of potential paths for the Chrome executable")]
+    [string[]]$ChromePaths = @(
+        "C:\Users\chrome.exe"
+    ),
+
+    [Parameter(Mandatory = $false, HelpMessage = "Array of potential paths for the ChromeDriver executable")]
+    [string[]]$ChromeDriverPaths = @(
+        "C:\Users\chromedriver-win64"
+    ),
+
+    [Parameter(Mandatory = $false, HelpMessage = "Path to the Excel file containing web form data")]
+    [string]$ExcelFilePath = "C:\Users\Data_powershell.xlsx",
+
+    [Parameter(Mandatory = $false, HelpMessage = "URL of the website to automate")]
+    [string]$WebsiteUrl = "http://127.0.0.1:5500/index.html"
+)
+
 # Enable strict mode and configure error handling
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
-
-# Define paths
-$ChromePaths = @(
-    "C:\Users\chrome.exe"
-)
-
-$ChromeDriverPaths = @(
-    "C:\Users\chromedriver-win64"
-)
 
 # Function to find a file in multiple locations
 function Find-File {
@@ -90,10 +100,6 @@ try {
     # Initialize WebDriver
     $service = [OpenQA.Selenium.Chrome.ChromeDriverService]::CreateDefaultService($ChromeDriverPath)
     $driver = New-Object OpenQA.Selenium.Chrome.ChromeDriver($service, $ChromeOptions)
-
-    # Define file paths
-    $ExcelFilePath = "C:\Users\Data_powershell.xlsx"
-    $WebsiteUrl = "http://127.0.0.1:5500/index.html"
 
     # Navigate to the website
     $driver.Navigate().GoToUrl($WebsiteUrl)
