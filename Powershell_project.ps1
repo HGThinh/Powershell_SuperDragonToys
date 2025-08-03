@@ -803,4 +803,29 @@ function Format-Number {
     "{0:N$DecimalDigits}" -f $Number # Uses string formatting to achieve the desired decimal places.
 }
 
+
+#endregion
+
+#region --- Main Script Logic ---
+
+# Initialize PDF text extraction
+Write-Host "=== Initializing PDF Text Extraction ===" -ForegroundColor Magenta
+$global:iTextSharpAvailable = Install-iTextSharp # Calls the function to install/load iTextSharp and sets a global flag.
+
+if (-not $global:iTextSharpAvailable) {
+    Write-Host "iTextSharp not available. Will use COM object fallback methods." -ForegroundColor Yellow # Informs user about iTextSharp status.
+}
+else {
+    Write-Host "PDF text extraction ready!" -ForegroundColor Green # Confirms iTextSharp readiness.
+}
+
+# 1. Create necessary folders
+Create-ProjectFolders # Ensures all required project directories exist.
+
+Write-Log -Message "Script started at $(Get-Date)" -Level "INFO" # Logs the script start time.
+
+# Initial notification
+Write-Host "PowerShell automation script is running. Press Ctrl+C to stop." -ForegroundColor Cyan # Provides user instructions.
+Write-Host "Monitoring '$inputPdfFolder' for new PDF files every $($scanIntervalSeconds) seconds." -ForegroundColor Cyan # Informs about monitoring interval.
+
 #endregion
