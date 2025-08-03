@@ -674,4 +674,111 @@ function Process-Images {
     Write-Log -Message "Image processing complete. Processed $imagesProcessedCount images." # Logs overall image processing completion.
 }
 
+function Analyze-Data {
+    <#
+    .SYNOPSIS
+    Performs analytical reporting on product data from the Excel database.
+    .DESCRIPTION
+    This function reads the product data from the Excel database,
+    calculates various statistics such as average price, highest/lowest priced products,
+    total quantities, top products by quantity, and identifies products low on stock or out of stock.
+    It captures all analysis output into a separate, timestamped log file within the Logs folder,
+    while also sending critical messages to the main project log.
+    .OUTPUTS
+    A log file with detailed analysis (ProductAnalysis_YYYYMMDD_HHMMSS.txt) in the Logs folder.
+    #>
+    # Define a path for the specific analysis output file
+    # This will place the analysis in the Logs folder with a timestamp
+    $analysisOutputPath = Join-Path $logFolder "ProductAnalysis_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt" # Path for the dedicated analysis log file.
+
+    Write-Log -Message "Starting data analysis (Price, Products, Warehouse)..." -Level "INFO" # Logs the start of data analysis.
+
+    # Use a StringBuilder to capture all analysis output
+    $analysisContent = New-Object System.Text.StringBuilder # StringBuilder to accumulate analysis output.
+
+    # Temporarily override Write-Log for analysis output capture
+    # This block temporarily redefines Write-Log to also append to $analysisContent.
+    # It saves the original Write-Log to restore it later.
+    $script:OriginalWriteLog = Get-Item Function:\Write-Log # Saves the original Write-Log function definition.
+    Function Write-Log {
+        param(
+            [Parameter(Mandatory = $true)][string]$Message,
+            [string]$Level = "INFO"
+        )
+        # Append to our StringBuilder for the analysis file
+        $analysisContent.AppendLine("[$Level] $Message") | Out-Null # Appends log message to StringBuilder.
+        
+        # Also call the original Write-Log function to keep logging to ProjectLog.txt
+        # Ensure the original function can be called. This is a common pattern for "wrapping".
+        # If your original Write-Log is defined globally, you can call it directly or via its fully qualified name.
+        & $script:OriginalWriteLog -Message $Message -Level $Level # Calls the original Write-Log function.
+    }
+
+    Try {
+        $data = Import-Excel -Path $excelDatabasePath -ErrorAction Stop # Imports all data from the Excel database.
+
+        if (-not $data) {
+            Write-Log -Message "No data found in Excel for analysis." -Level "INFO" # Logs if no data is found for analysis.
+            return # Exits the function.
+        }
+
+        $averagePrice = ($data | Measure-Object -Property Price -Average).Average # Calculates average price.
+        $highestPrice = $data | Sort-Object -Property Price -Descending | Select-Object -First 1 ProductName, Price # Finds product with highest price.
+        $lowestPrice = $data | Sort-Object -Property Price | Select-Object -First 1 ProductName, Price # Finds product with lowest price.
+        Write-Log -Message "Price Analysis:" -Level "INFO"
+        Write-Log -Message "  Total Products: $($data.Count)" -Level "INFO"
+        Write-Log -Message "  Average Price: $(Format-Number -Number $averagePrice -DecimalDigits 2)" -Level "INFO" # Logs average price (formatted).
+        if ($highestPrice) { Write-Log -Message "  Highest Price Product: $($highestPrice.ProductName) ($($highestPrice.Price))" -Level "INFO" } # Logs highest price product.
+        if ($lowestPrice) { Write-Log -Message "  Lowest Price Product: $($lowestPrice.ProductName) ($($lowestPrice.Price))" -Level "INFO" } # Logs lowest price product.
+
+        $totalQuantity = ($data | Measure-Object -Property Quantity -Sum).Sum # Calculates total quantity across all products.
+        $top5ProductsByQuantity = $data | Sort-Object -Property Quantity -Descending | Select-Object -First 5 ProductName, Quantity # Finds top 5 products by quantity.
+        Write-Log -Message "Product Analysis:" -Level "INFO"
+        Write-Log -Message "  Total Quantity Across All Products: $totalQuantity" -Level "INFO"
+        $top5ProductsByQuantity | ForEach-Object { Write-Log -Message "    $($_.ProductName): $($_.Quantity)" -Level "INFO" } # Logs top 5 products.
+
+        $totalWarehouseStock = ($data | Measure-Object -Property WarehouseStock -Sum).Sum # Calculates total warehouse stock.
+        $productsLowOnStock = $data | Where-Object { $_.WarehouseStock -le 10 -and $_.WarehouseStock -gt 0 } # Finds products with low stock.
+        $outOfStockProducts = $data | Where-Object { $_.WarehouseStock -eq 0 } # Finds out of stock products.
+
+        Write-Log -Message "Warehouse Analysis:" -Level "INFO"
+        if ($productsLowOnStock.Count -gt 0) {
+            Write-Log -Message "  Products Low on Stock (<=10):" -Level "INFO"
+            $productsLowOnStock | ForEach-Object { Write-Log -Message "    $($_.ProductName) (Barcode: $($_.Barcode)): $($_.WarehouseStock) in stock" -Level "INFO" } # Logs low stock products.
+        }
+        else {
+            Write-Log -Message "  No products detected as 'low on stock'." -Level "INFO" # Logs if no low stock products.
+        }
+        if ($outOfStockProducts.Count -gt 0) {
+            Write-Log -Message "  Products Out of Stock (0):" -Level "INFO"
+            $outOfStockProducts | ForEach-Object { Write-Log -Message "    $($_.ProductName) (Barcode: $($_.Barcode))" -Level "INFO" } # Logs out of stock products.
+        }
+        else {
+            Write-Log -Message "  No products detected as 'out of stock'." -Level "INFO" # Logs if no out of stock products.
+        }
+
+        Write-Log -Message "Data analysis complete." -Level "SUCCESS" # Logs completion of data analysis.
+    }
+    Catch {
+        Write-Log -Message "Error during data analysis: $($_.Exception.Message)" -Level "ERROR" # Logs any error during analysis.
+    }
+    Finally {
+        # Restore the original Write-Log function
+        Remove-Item Function:\Write-Log -ErrorAction SilentlyContinue # Removes the temporary Write-Log function.
+        Set-Item Function:\Write-Log $script:OriginalWriteLog -ErrorAction SilentlyContinue # Restores the original Write-Log function.
+        Remove-Variable script:OriginalWriteLog -ErrorAction SilentlyContinue # Cleans up the temporary variable.
+
+        # Save the captured analysis content to the dedicated file
+        Try {
+            $analysisContent.ToString() | Out-File -FilePath $analysisOutputPath -Encoding UTF8 # Saves the accumulated analysis content to its dedicated file.
+            # Use original Write-Log here for consistency
+            & $script:OriginalWriteLog -Message "Product analysis exported to: $analysisOutputPath" -Level "INFO" # Logs the path of the saved analysis file using the original Write-Log.
+        }
+        Catch {
+            & $script:OriginalWriteLog -Message "Failed to export product analysis to $analysisOutputPath : $($_.Exception.Message)" -Level "ERROR" # Logs error if analysis file cannot be saved.
+        }
+        Remove-Variable analysisContent -ErrorAction SilentlyContinue # Cleans up the StringBuilder variable.
+    }
+}
+
 #endregion
