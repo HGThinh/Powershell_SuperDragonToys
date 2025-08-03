@@ -1,86 +1,60 @@
-# PowerShell Automation Tools
+# Product Data Automation Script
 
-A collection of PowerShell scripts for automation tasks including image processing and web automation using Selenium WebDriver.
+## Overview
 
-## Scripts
+This PowerShell script automates the process of extracting product information from billing PDF files, processing product images, and maintaining a centralized product database in an Excel file. It continuously monitors designated folders for new PDF invoices and image files, updates product quantities and details, links images, and performs regular data analysis.
 
-### 1. Image Processor (Process-Image.ps1)
+## Features
 
-A PowerShell script for batch processing images with resizing and watermarking capabilities. This script provides a simple way to standardize image sizes while maintaining aspect ratios and optionally adding watermarks.
+- **Automated PDF Parsing**: Extracts `ProductName`, `Quantity`, `Price`, and `Barcode` from billing PDFs using multiple robust extraction methods (iTextSharp, Microsoft Word COM, Adobe Reader COM, plain text fallback).
+- **Dynamic Excel Database Management**:
+  - Creates a new Excel database (`ProductDatabase.xlsx`) if one doesn't exist.
+  - Updates existing product quantities based on new PDF data.
+  - Adds new products to the database.
+  - Detects and logs price changes for existing products.
+- **Image Processing & Linking**:
+  - Automatically resizes images to a specified `TargetSize` (default 600x600 pixels) and adds a configurable text watermark.
+  - Links processed images to corresponding products in the Excel database using the image filename (assumed to be the product barcode).
+- **Real-time Monitoring**: Continuously scans predefined input folders for new PDF and image files at a configurable interval.
+- **Comprehensive Logging**: Maintains detailed logs of all operations, including file processing, database updates, and errors, in a `ProjectLog.txt` file.
+- **Data Analysis & Reporting**: Periodically generates a detailed analytical report on product data (average price, top products, stock levels) and saves it to a separate timestamped log file.
+- **Automated File Management**: Moves processed PDF and original image files to designated "Finished" folders.
 
-#### Features
-- Resize images to a specified target size (default 600x600 pixels)
-- Maintain aspect ratio during resizing
-- Center images on a white background
-- Add customizable watermark text
-- High-quality image processing with bicubic interpolation
-- Error handling and resource management
+## Prerequisites
 
-#### Prerequisites
-- Windows PowerShell 5.1 or later
-- System.Drawing assembly
-- Sufficient permissions to read/write image files
+- **PowerShell 5.1 or newer**: The script requires PowerShell version 5.1 or higher to run.
+- **ImportExcel Module**: This PowerShell module is essential for reading from and writing to Excel files.
+  - Install it by running PowerShell as Administrator and executing:
+    ```powershell
+    Install-Module -Name ImportExcel -Scope CurrentUser
+    ```
+- **iTextSharp (Optional but Recommended)**: The script attempts to automatically install or locate the `iTextSharp` library for PDF text extraction. If `iTextSharp` cannot be installed or found, the script will fall back to using Microsoft Word or Adobe Reader COM objects, which require the respective applications to be installed on the system.
+  - For reliable PDF parsing, ensure your system has internet access for NuGet package installation or a compatible version of Microsoft Word or Adobe Acrobat/Reader.
 
-#### Basic Usage
+## Configuration
+
+All primary configuration settings are located at the beginning of the `test.ps1` script. You **must** adjust these paths and settings to match your environment.
+
 ```powershell
-./Process-Image.ps1 `
-    -InputPath "C:\path\to\input\image.jpg" `
-    -OutputPath "C:\path\to\output\image.jpg" `
-    -WatermarkText "© Your Name" `
-    -TargetSize 600
-```
+# **IMPORTANT: Make sure this path match**
+$projectRoot = "C:\Users\hoang\Desktop\Test28_07_2025" # Base directory for all project files and folders.
 
-### 2. Chrome WebDriver Setup (ChromeWebDriverSetup.ps1)
+$inputPdfFolder = $projectRoot # Directory where new PDF files are dropped for processing.
+$finishedPdfFolder = Join-Path $projectRoot "FinishedPdfs" # Directory where processed PDF files are moved.
+$finishedImageFolder = Join-Path $projectRoot "FinishedImages" # Directory where original image files are moved after processing.
+$imagesWithWatermarkFolder = Join-Path $projectRoot "ImagesWithWatermark" # Directory where watermarked and resized images are saved.
+$sourceImagesFolder = $projectRoot # Directory where new image files are dropped for processing.
+$logFolder = Join-Path $projectRoot "Logs" # Directory for log files.
+$dataFolder = $projectRoot # Directory for data files, including the Excel database.
+$excelDatabasePath = Join-Path $dataFolder "ProductDatabase.xlsx" # Full path to the Excel database file.
+$logFilePath = Join-Path $logFolder "ProjectLog.txt" # Full path to the main log file.
 
-A script for automating web interactions using Selenium WebDriver with Chrome, including path discovery and Excel data processing capabilities.
+# Image Processing Configuration
+$imageResizeWidth = 600 # pixels (Target width and height for resized images)
+$defaultImageWatermarkText = "Thinh" # Text to be applied as a watermark on processed images.
 
-#### Features
-- Automatic Chrome and ChromeDriver path detection
-- Excel data import and processing
-- Configurable Chrome options
-- Robust error handling
-- Form automation capabilities
-
-#### Prerequisites
-- Windows PowerShell 5.1 or later
-- Selenium WebDriver
-- ImportExcel PowerShell module
-- Google Chrome browser
-- ChromeDriver matching your Chrome version
-
-#### Required Modules
-```powershell
-Import-Module -Name ImportExcel
-Add-Type -AssemblyName System.Drawing
-```
-
-## Installation
-
-1. Clone or download this repository
-2. Install required dependencies:
-   ```powershell
-   Install-Module -Name ImportExcel
-   Add-Type -AssemblyName System.Drawing
-   ```
-3. Download ChromeDriver matching your Chrome version from [ChromeDriver Downloads](https://chromedriver.chromium.org/downloads)
-
-## Error Handling
-
-Both scripts include comprehensive error handling:
-- Input validation
-- Resource management
-- Detailed error messages
-- Proper cleanup procedures
-
-## Contributing
-
-Feel free to submit issues and enhancement requests. Follow these steps to contribute:
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+# Scan interval for new PDFs and Images (in seconds)
+$scanIntervalSeconds = 30 # Time in seconds the script waits before scanning for new files again.
 
 ## Author
 
@@ -89,24 +63,27 @@ Hoàng Gia Thịnh
 ## Acknowledgments
 
 - Built using System.Drawing for .NET
-- Selenium WebDriver for web automation
-- ImportExcel module for Excel processing
+- ImportExcel PowerShell Module: For providing robust and easy-to-use cmdlets for Excel file manipulation in PowerShell.
+- iTextSharp: For its powerful PDF text extraction capabilities, which greatly enhance the functionality of script
+
 
 ## References
 
 ### Official Documentation
 - [PowerShell Documentation](https://docs.microsoft.com/en-us/powershell/)
-- [Selenium WebDriver Documentation](https://www.selenium.dev/documentation/webdriver/)
+- [iTextSharp Documentation] (https://itextpdf.com/resources/api-documentation)
 - [System.Drawing Namespace](https://docs.microsoft.com/en-us/dotnet/api/system.drawing)
 
 ### Tools and Dependencies
-- [ChromeDriver Downloads](https://chromedriver.chromium.org/downloads)
 - [ImportExcel Module](https://github.com/dfinke/ImportExcel)
-- [Selenium WebDriver for PowerShell](https://www.powershellgallery.com/packages/Selenium)
+- [iTextSharp library, nugetURL]("https://www.nuget.org/api/v2/package/iTextSharp/5.5.13.3")
 
 ### Useful Resources
-- [PowerShell: Automatically Fill Online Form with data read from Spreadsheet] (https://www.youtube.com/watch?v=G6Ea3FCWLA4)
 - [PowerShell: Resize-Image] (https://gist.github.com/someshinyobject/617bf00556bc43af87cd)
 - [Powershell use .NET .DrawImage in System.Drawing] (https://stackoverflow.com/questions/55001057/powershell-use-net-drawimage-in-system-drawing)
 - [How can I get PowerShell to read data in an Excel spreadsheet and apply to AD?] (https://community.spiceworks.com/t/how-can-i-get-powershell-to-read-data-in-an-excel-spreadsheet-and-apply-to-ad/818942/2)
+-[Claude AI for PDF text extraction] (https://claude.ai/share/7fa07356-e21f-40a3-9f11-2b115bd8561d)
+-[Gemini AI for comment base] (https://g.co/gemini/share/3848d71374af)
+-[Gemini AI for loop to check new images] (https://g.co/gemini/share/317764724bc4)
 
+```
