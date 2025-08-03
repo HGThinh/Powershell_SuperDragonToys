@@ -33,7 +33,7 @@ This PowerShell script automates the process of extracting product information f
 
 ## Configuration
 
-All primary configuration settings are located at the beginning of the `test.ps1` script. You **must** adjust these paths and settings to match your environment.
+All primary configuration settings are located at the beginning of the `Data_automation.ps1` script. You **must** adjust these paths and settings to match your environment.
 
 ```powershell
 # **IMPORTANT: Make sure this path match**
