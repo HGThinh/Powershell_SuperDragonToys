@@ -431,4 +431,97 @@ function Parse-BillingPdf {
     }
 }
 
+function Update-ProductDatabase {
+    <#
+    .SYNOPSIS
+    Updates the product database (Excel file) with new product data.
+    .DESCRIPTION
+    This function takes an array of new product data, compares it with existing data
+    in the Excel database, updates quantities for existing products, and adds new products.
+    It also checks for price changes and logs them as warnings.
+    If the Excel file doesn't exist, it creates a new one with an initial sample entry.
+    Requires the `ImportExcel` module.
+    .PARAMETER NewProductsData
+    An array of PSCustomObject, each representing a new product with Barcode, ProductName, Quantity, and Price.
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true)]
+        [array]$NewProductsData # Array of new product data to be added/updated.
+    )
+    Write-Log -Message "Updating product database..." # Logs the start of database update.
+
+    if (-not (Test-Path $excelDatabasePath)) {
+        Write-Log -Message "Excel database not found. Creating new file at $excelDatabasePath." # Logs that a new Excel file will be created.
+        $initialData = @(
+            [PSCustomObject]@{
+                Barcode        = "00000"
+                ProductName    = "Sample Product"
+                Quantity       = 0
+                Price          = 0.00
+                LastUpdated    = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                ImageLink      = ""
+                WarehouseStock = 0
+            }
+        )
+        $initialData | Export-Excel -Path $excelDatabasePath -AutoSize -NoHeader -ClearSheet # Creates a new Excel file with initial data.
+        Write-Log -Message "Initial Excel database created." # Confirms initial creation.
+    }
+
+    $existingData = Import-Excel -Path $excelDatabasePath -ErrorAction SilentlyContinue # Imports existing data from Excel.
+    if (-not $existingData -or ($existingData -isnot [array] -and $existingData.PSObject.TypeNames -notcontains "System.Collections.ArrayList")) {
+        $existingData = @() # Initializes as empty array if Import-Excel returns nothing or a non-array.
+        Write-Log -Message "Initialized existingData as empty array to prevent 'op_Addition' error." -Level "INFO" # Logs array initialization.
+    }
+
+    $updatedRows = 0 # Counter for updated rows.
+    $addedRows = 0 # Counter for added rows.
+    $priceChangeAlerts = @() # Array to store price change messages.
+
+    foreach ($newProduct in $NewProductsData) {
+        $found = $false # Flag to check if product exists.
+        for ($i = 0; $i -lt $existingData.Count; $i++) {
+            if ($existingData[$i].Barcode -eq $newProduct.Barcode) {
+                $found = $true # Product found.
+                if ($existingData[$i].Price -ne $newProduct.Price) {
+                    $priceChangeAlerts += "Price change detected for $($newProduct.ProductName) (Barcode: $($newProduct.Barcode)): Old Price $($existingData[$i].Price) -> New Price $($newProduct.Price)" # Records price change.
+                }
+                $existingData[$i].Quantity = $existingData[$i].Quantity + $newProduct.Quantity # Updates quantity.
+                $existingData[$i].Price = $newProduct.Price # Updates price.
+                $existingData[$i].LastUpdated = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") # Updates last updated timestamp.
+                $updatedRows++ # Increments updated count.
+                Write-Log -Message "Updated quantity for '$($newProduct.ProductName)' (Barcode: $($newProduct.Barcode)). New Quantity: $($existingData[$i].Quantity)" -Level "INFO" # Logs quantity update.
+                break # Exit loop once product is found and updated.
+            }
+        }
+        if (-not $found) {
+            $newProductRow = [PSCustomObject]@{
+                Barcode        = $newProduct.Barcode
+                ProductName    = $newProduct.ProductName
+                Quantity       = $newProduct.Quantity
+                Price          = $newProduct.Price
+                LastUpdated    = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                ImageLink      = ""
+                WarehouseStock = 0
+            }
+            $existingData += $newProductRow # Adds new product to existing data.
+            $addedRows++ # Increments added count.
+            Write-Log -Message "Added new product: '$($newProduct.ProductName)' (Barcode: $($newProduct.Barcode)). Quantity: $($newProduct.Quantity)" -Level "INFO" # Logs new product addition.
+        }
+    }
+
+    Try {
+        $existingData | Export-Excel -Path $excelDatabasePath -AutoSize -ClearSheet # Exports all data back to Excel.
+        Write-Log -Message "Excel database saved successfully. Updated $updatedRows items, Added $addedRows items." -Level "SUCCESS" # Confirms successful save.
+
+        if ($priceChangeAlerts.Count -gt 0) {
+            $alertBody = "The following price changes were detected during PDF processing:`n`n" + ($priceChangeAlerts -join "`n") # Formats price change alerts.
+            Write-Log -Message "Price change alerts detected:`n$alertBody" -Level "WARN" # Logs price change alerts.
+        }
+    }
+    Catch {
+        Write-Log -Message "Error saving Excel database: $($_.Exception.Message)" -Level "ERROR" # Logs error during Excel save.
+        throw # Throws the error.
+    }
+}
 #endregion
