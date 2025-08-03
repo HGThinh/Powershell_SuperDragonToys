@@ -524,4 +524,154 @@ function Update-ProductDatabase {
         throw # Throws the error.
     }
 }
+
+function Process-Image {
+    <#
+    .SYNOPSIS
+    Resizes and optionally watermarks an image.
+    .DESCRIPTION
+    This function uses the System.Drawing namespace to load an image,
+    resize it to a square target size while maintaining aspect ratio (padding with white),
+    and optionally adds a text watermark to the bottom-left corner.
+    The processed image is saved as a PNG file.
+    .PARAMETER InputPath
+    The full path to the input image file.
+    .PARAMETER OutputPath
+    The full path where the processed image will be saved.
+    .PARAMETER WatermarkText
+    Optional text to be added as a watermark. If not provided, no watermark is added.
+    .PARAMETER TargetSize
+    The desired width and height (in pixels) for the square output image. Default is 600.
+    #>
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "Path to the input Image file that needs to be processed")]
+        [string]$InputPath, # Path to the original image file.
+        [Parameter(Mandatory = $true, HelpMessage = "Path for the output image file where the processed image will be saved")]
+        [string]$OutputPath, # Path where the processed image will be saved.
+        [string]$WatermarkText = "", # Optional text watermark.
+        [int]$TargetSize = 600 # Target size for the square output image.
+    )
+    $originalImage = $null # Variable to hold the original image object.
+    $finalImage = $null # Variable to hold the processed image object.
+    $graphics = $null # Variable to hold the graphics object.
+    $font = $null # Variable to hold the font object for watermark.
+    $brush = $null # Variable to hold the brush object for watermark.
+
+    try {
+        # Load the System.Drawing assembly (usually loaded by default in Windows PowerShell)
+        Add-Type -AssemblyName System.Drawing # Ensures the System.Drawing assembly is loaded.
+
+        $originalImage = [System.Drawing.Image]::FromFile($InputPath) # Loads the original image.
+        $originalWidth = $originalImage.Width # Gets original image width.
+        $originalHeight = $originalImage.Height # Gets original image height.
+
+        $finalImage = New-Object System.Drawing.Bitmap($TargetSize, $TargetSize) # Creates a new blank bitmap for the final image.
+        $graphics = [System.Drawing.Graphics]::FromImage($finalImage) # Creates a Graphics object to draw on the final image.
+        $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic # Sets interpolation mode for quality.
+        $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality # Sets smoothing mode for quality.
+        $graphics.Clear([System.Drawing.Color]::White) # Fills the background with white.
+
+        $ratio = [Math]::Min($TargetSize / $originalWidth, $TargetSize / $originalHeight) # Calculates scaling ratio to fit within target size.
+        $newWidth = [int]($originalWidth * $ratio) # Calculates new width after scaling.
+        $newHeight = [int]($originalHeight * $ratio) # Calculates new height after scaling.
+        $x = ($TargetSize - $newWidth) / 2 # Calculates X offset for centering.
+        $y = ($TargetSize - $newHeight) / 2 # Calculates Y offset for centering.
+        $graphics.DrawImage($originalImage, $x, $y, $newWidth, $newHeight) # Draws the scaled original image onto the new bitmap.
+
+        # Add watermark only if text is provided
+        if (-not [string]::IsNullOrEmpty($WatermarkText)) {
+            $font = New-Object System.Drawing.Font("Arial", 20, [System.Drawing.FontStyle]::Bold) # Creates a font for the watermark.
+            $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(128, 0, 0, 0)) # Creates a semi-transparent black brush.
+            $textSize = $graphics.MeasureString($WatermarkText, $font) # Measures the size of the watermark text.
+            $watermarkX = 20 # X position for the watermark.
+            $watermarkY = $TargetSize - $textSize.Height - 20 # Y position for the watermark (bottom-left).
+            $graphics.DrawString($WatermarkText, $font, $brush, $watermarkX, $watermarkY) # Draws the watermark text.
+        }
+
+        $finalImage.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Png) # Saves the processed image as PNG.
+        Write-Log -Message "Processed image using System.Drawing: '$InputPath' -> '$OutputPath'." -Level "INFO" # Logs successful image processing.
+
+    }
+    catch {
+        Write-Log -Message "Error processing image '$InputPath' with System.Drawing: $($_.Exception.Message)" -Level "ERROR" # Logs error during image processing.
+        throw # Throws the error.
+    }
+    finally {
+        # Ensure all disposable objects are disposed
+        if ($graphics) { $graphics.Dispose() } # Disposes the Graphics object.
+        if ($finalImage) { $finalImage.Dispose() } # Disposes the final image bitmap.
+        if ($originalImage) { $originalImage.Dispose() } # Disposes the original image.
+        if ($font) { $font.Dispose() } # Disposes the font object.
+        if ($brush) { $brush.Dispose() } # Disposes the brush object.
+    }
+}
+
+function Process-Images {
+    <#
+    .SYNOPSIS
+    Processes all PNG images in the source image folder and updates the product database.
+    .DESCRIPTION
+    This function scans the `$sourceImagesFolder` for PNG files.
+    For each image, it calls `Process-Image` to resize and watermark it,
+    then saves the processed image to `$imagesWithWatermarkFolder`.
+    It attempts to link the processed image's path to a corresponding product
+    in the Excel database based on the image's base name (assumed to be the barcode).
+    Finally, it updates the Excel database with the image links.
+    #>
+    Write-Log -Message "Starting image processing..." # Logs the start of image processing.
+    $imagesProcessedCount = 0 # Counter for processed images.
+    $imageFiles = Get-ChildItem -Path $sourceImagesFolder -Filter "*.png" -File # Gets all PNG files in the source folder.
+
+    if ($imageFiles.Count -eq 0) {
+        Write-Log -Message "No image files found in '$sourceImagesFolder' to process." -Level "INFO" # Logs if no images are found.
+        return # Exits the function.
+    }
+
+    $excelData = Import-Excel -Path $excelDatabasePath -ErrorAction SilentlyContinue # Imports existing Excel data.
+    if (-not $excelData) {
+        Write-Log -Message "Could not load Excel data for image linking. Skipping image linking." -Level "WARN" # Warns if Excel data cannot be loaded.
+        $excelData = @() # Initializes as empty array to avoid errors.
+    }
+
+    foreach ($imageFile in $imageFiles) {
+        $imageName = $imageFile.BaseName # Gets the file name without extension (assumed to be barcode).
+        $outputImagePath = Join-Path $imagesWithWatermarkFolder "$($imageName)_processed.png" # Constructs output path for processed image.
+
+        Try {
+            Process-Image -InputPath $imageFile.FullName `
+                -OutputPath $outputImagePath `
+                -WatermarkText $defaultImageWatermarkText `
+                -TargetSize $imageResizeWidth # Calls Process-Image to handle resizing and watermarking.
+            
+            Write-Log -Message "Image processed: '$($imageFile.Name)' -> '$($outputImagePath)'." -Level "INFO" # Logs successful image processing.
+
+            # Link image to product in Excel (by Barcode matching BaseName)
+            $barcodeToLink = $imageFile.BaseName # Barcode is assumed to be the image file's base name.
+
+            for ($i = 0; $i -lt $excelData.Count; $i++) {
+                if ($excelData[$i].Barcode -eq $barcodeToLink) {
+                    $excelData[$i].ImageLink = $outputImagePath # Updates the ImageLink column in Excel data.
+                    Write-Log -Message "Linked image '$($outputImagePath)' to barcode '$barcodeToLink' in Excel." -Level "INFO" # Logs image linking.
+                    break # Exit loop once product is found.
+                }
+            }
+            $imagesProcessedCount++ # Increments processed image count.
+        }
+        Catch {
+            Write-Log -Message "Error processing image '$($imageFile.Name)': $($_.Exception.Message)" -Level "ERROR" # Logs error during image processing.
+        }
+    }
+
+    if ($imagesProcessedCount -gt 0) {
+        Try {
+            $excelData | Export-Excel -Path $excelDatabasePath -AutoSize -ClearSheet # Exports updated Excel data.
+            Write-Log -Message "Excel database updated with image links." -Level "SUCCESS" # Confirms Excel update.
+        }
+        Catch {
+            Write-Log -Message "Error saving Excel database after image linking: $($_.Exception.Message)" -Level "ERROR" # Logs error saving Excel after image linking.
+        }
+    }
+    Write-Log -Message "Image processing complete. Processed $imagesProcessedCount images." # Logs overall image processing completion.
+}
+
 #endregion
