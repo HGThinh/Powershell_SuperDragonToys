@@ -313,4 +313,122 @@ function Create-ProjectFolders {
     }
     Write-Log -Message "Project folders checked." # Logs that folder check is complete.
 }
+
+function Parse-BillingPdf {
+    <#
+    .SYNOPSIS
+    Extracts product information from a billing PDF file.
+    .DESCRIPTION
+    This function attempts to extract text from a given PDF using three methods in order:
+    1. iTextSharp (if available and loaded)
+    2. COM objects (Microsoft Word or Adobe Reader)
+    3. Direct plain text reading (as a last resort for simple text-based PDFs).
+    Once text is extracted, it applies multiple regex patterns to find product details
+    (ProductName, Quantity, Price, Barcode) and returns them as an array of custom objects.
+    It logs each step and any failures.
+    .PARAMETER PdfPath
+    The full path to the billing PDF file to be parsed.
+    .OUTPUTS
+    [array] An array of PSCustomObject, each representing a product found in the PDF,
+            or $null if no product data can be extracted.
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true)]
+        [string]$PdfPath # Path to the PDF file to parse.
+    )
+    Write-Log -Message "Attempting to parse PDF: $PdfPath" # Logs the start of PDF parsing.
+
+    Try {
+        # Extract text from PDF using multiple methods
+        $pdfContent = $null # Initializes variable to store extracted PDF content.
+        
+        # Method 1: Try iTextSharp (if available)
+        if ($global:iTextSharpAvailable) {
+            Write-Log -Message "Extracting text using iTextSharp..." -Level "INFO"
+            $pdfContent = Extract-TextFromPdf-iTextSharp -PdfFilePath $PdfPath # Tries iTextSharp extraction.
+        }
+        
+        # Method 2: Fallback to COM objects if iTextSharp failed
+        if (-not $pdfContent) {
+            Write-Log -Message "Extracting text using COM objects..." -Level "INFO"
+            $pdfContent = Extract-TextFromPdf-ComObject -PdfFilePath $PdfPath # Tries COM object extraction.
+        }
+        
+        # Method 3: Last resort - try to read as plain text (if PDF is text-based)
+        if (-not $pdfContent) {
+            Write-Log -Message "Attempting to read PDF as plain text..." -Level "WARN"
+            try {
+                $pdfContent = Get-Content $PdfPath -Raw -Encoding UTF8 # Tries reading as plain text.
+            }
+            catch {
+                Write-Log -Message "Plain text reading also failed." -Level "ERROR" # Logs plain text reading failure.
+            }
+        }
+        
+        if (-not $pdfContent) {
+            Write-Log -Message "All PDF text extraction methods failed for: $PdfPath" -Level "ERROR" # Logs complete extraction failure.
+            return $null # Returns null if no text could be extracted.
+        }
+        
+        Write-Log -Message "Successfully extracted text from PDF. Content length: $($pdfContent.Length) characters" -Level "INFO" # Logs successful text extraction.
+        
+        # Parse the extracted content for product information
+        $products = @() # Initializes an empty array to store product data.
+        
+        # Updated regex patterns to be more flexible
+        $patterns = @(
+            # Original pattern
+            "(?s)Product:\s*(?<ProductName>[^,]+),\s*Quantity:\s*(?<Quantity>\d+),\s*Price:\s*(?<Price>[\d.]+),\s*Barcode:\s*(?<Barcode>\d+)", # Pattern 1
+            
+            # Alternative patterns for different PDF formats
+            "(?i)(?<ProductName>[^\r\n]+)\s+Qty:\s*(?<Quantity>\d+)\s+Price:\s*\$?(?<Price>[\d.]+)\s+Barcode:\s*(?<Barcode>\d+)", # Pattern 2
+            "(?i)Barcode:\s*(?<Barcode>\d+)\s+(?<ProductName>[^\r\n]+)\s+Quantity:\s*(?<Quantity>\d+)\s+Price:\s*\$?(?<Price>[\d.]+)", # Pattern 3
+            
+            # More flexible pattern
+            "(?i)(?<ProductName>[A-Za-z0-9\s\-_]+)\s*.*?(?<Quantity>\d+)\s*.*?(?<Price>\d+\.?\d*)\s*.*?(?<Barcode>\d{8,})" # Pattern 4
+        )
+        
+        $foundMatch = $false # Flag to track if any pattern found a match.
+        foreach ($pattern in $patterns) {
+            $matches = [regex]::Matches($pdfContent, $pattern) # Attempts to find matches using the current pattern.
+            
+            if ($matches.Count -gt 0) {
+                Write-Log -Message "Found $($matches.Count) product matches using pattern: $($patterns.IndexOf($pattern) + 1)" -Level "INFO" # Logs successful pattern match.
+                $foundMatch = $true # Sets flag to true.
+                
+                foreach ($match in $matches) {
+                    $product = [PSCustomObject]@{
+                        Barcode     = $match.Groups["Barcode"].Value.Trim() # Extracts and trims Barcode.
+                        ProductName = $match.Groups["ProductName"].Value.Trim() # Extracts and trims Product Name.
+                        Quantity    = [int]$match.Groups["Quantity"].Value # Extracts and converts Quantity to integer.
+                        Price       = [double]$match.Groups["Price"].Value # Extracts and converts Price to double.
+                    }
+                    $products += $product # Adds the extracted product to the array.
+                }
+                break # Use the first pattern that works
+            }
+        }
+        
+        if (-not $foundMatch) {
+            Write-Log -Message "No product data found in PDF using any pattern. PDF content preview (first 500 chars):" -Level "WARN" # Warns if no product data is found.
+            Write-Log -Message $pdfContent.Substring(0, [Math]::Min(500, $pdfContent.Length)) -Level "DEBUG" # Logs a preview of the PDF content.
+            
+            # Save extracted content for debugging
+            $debugPath = Join-Path $logFolder "extracted_content_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt" # Creates a debug file path.
+            $pdfContent | Out-File -FilePath $debugPath -Encoding UTF8 # Saves the full extracted content to a debug file.
+            Write-Log -Message "Full extracted content saved to: $debugPath" -Level "INFO" # Logs the debug file path.
+            
+            return $null # Returns null if no product data is found.
+        }
+
+        Write-Log -Message "Successfully extracted $($products.Count) products from $PdfPath" -Level "SUCCESS" # Logs successful product extraction.
+        return $products # Returns the array of extracted products.
+    }
+    Catch {
+        Write-Log -Message "Error parsing PDF '$PdfPath': $($_.Exception.Message)" -Level "ERROR" # Logs any error during PDF parsing.
+        return $null # Returns null if an error occurs.
+    }
+}
+
 #endregion
