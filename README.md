@@ -70,8 +70,7 @@ Hoàng Gia Thịnh
 ## References
 
 ### Official Documentation
-- [PowerShell Documentation](
-    https://docs.microsoft.com/en-us/powershell/)
+- [PowerShell Documentation](https://docs.microsoft.com/en-us/powershell/)
 - [iTextSharp Documentation] (https://itextpdf.com/resources/api-documentation)
 - [System.Drawing Namespace](https://docs.microsoft.com/en-us/dotnet/api/system.drawing)
 
