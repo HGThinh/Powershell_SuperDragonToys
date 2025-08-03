@@ -238,3 +238,45 @@ function Extract-TextFromPdf-ComObject {
 }
 
 #endregion
+
+#region --- Main Functions (Updated) ---
+function Write-Log {
+    <#
+    .SYNOPSIS
+    Writes a timestamped log message to a file and the console.
+    .DESCRIPTION
+    This function creates a log entry with a timestamp and a specified level (INFO, WARN, ERROR, SUCCESS, DEBUG).
+    It writes the entry to a central log file (`$logFilePath`) and also displays it on the console.
+    It automatically creates the log folder if it doesn't exist.
+    .PARAMETER Message
+    The log message to write.
+    .PARAMETER Level
+    The severity level of the log message. Valid values are "INFO", "WARN", "ERROR", "SUCCESS", "DEBUG".
+    Default is "INFO".
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message, # The message to be logged.
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("INFO", "WARN", "ERROR", "SUCCESS", "DEBUG")]
+        [string]$Level = "INFO" # The severity level of the log message.
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss" # Formats the current date and time.
+    $logEntry = "[$timestamp] [$Level] $Message" # Constructs the log entry string.
+
+    if (-not (Test-Path $logFolder)) {
+        try {
+            New-Item -ItemType Directory -Path $logFolder -Force | Out-Null # Creates the log folder if it doesn't exist.
+        }
+        catch {
+            Write-Warning "Could not create log folder: $logFolder. Log messages will only go to console." # Warns if folder creation fails.
+            Write-Host "$logEntry" # Outputs to console only if folder creation fails.
+            return
+        }
+    }
+
+    Add-Content -Path $logFilePath -Value $logEntry # Appends the log entry to the log file.
+    Write-Host "$logEntry" # Outputs the log entry to the console.
+}
+#endregion
