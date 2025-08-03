@@ -781,4 +781,26 @@ function Analyze-Data {
     }
 }
 
+function Format-Number {
+    <#
+    .SYNOPSIS
+    Formats a number to a specified number of decimal digits.
+    .DESCRIPTION
+    This helper function takes a double and formats it as a string
+    with a specified number of decimal places, typically used for presentation.
+    .PARAMETER Number
+    The numeric value to format.
+    .PARAMETER DecimalDigits
+    The number of decimal places to include in the formatted string. Default is 2.
+    .OUTPUTS
+    [string] The formatted number as a string.
+    #>
+    Param(
+        [Parameter(Mandatory = $true)]
+        [double]$Number, # The number to format.
+        [int]$DecimalDigits = 2 # The number of decimal digits.
+    )
+    "{0:N$DecimalDigits}" -f $Number # Uses string formatting to achieve the desired decimal places.
+}
+
 #endregion
