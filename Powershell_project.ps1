@@ -239,7 +239,7 @@ function Extract-TextFromPdf-ComObject {
 
 #endregion
 
-#region --- Main Functions (Updated) ---
+#region --- Main Functions ---
 function Write-Log {
     <#
     .SYNOPSIS
@@ -710,7 +710,6 @@ function Analyze-Data {
         
         # Also call the original Write-Log function to keep logging to ProjectLog.txt
         # Ensure the original function can be called. This is a common pattern for "wrapping".
-        # If your original Write-Log is defined globally, you can call it directly or via its fully qualified name.
         & $script:OriginalWriteLog -Message $Message -Level $Level # Calls the original Write-Log function.
     }
 
@@ -806,7 +805,7 @@ function Format-Number {
 
 #endregion
 
-#region --- Main Script Logic ---
+#region --- Main Script ---
 
 # Initialize PDF text extraction
 Write-Host "=== Initializing PDF Text Extraction ===" -ForegroundColor Magenta
@@ -827,5 +826,85 @@ Write-Log -Message "Script started at $(Get-Date)" -Level "INFO" # Logs the scri
 # Initial notification
 Write-Host "PowerShell automation script is running. Press Ctrl+C to stop." -ForegroundColor Cyan # Provides user instructions.
 Write-Host "Monitoring '$inputPdfFolder' for new PDF files every $($scanIntervalSeconds) seconds." -ForegroundColor Cyan # Informs about monitoring interval.
+
+# Main loop to scan for new PDF files
+while ($true) {
+    Write-Log -Message "Scanning for new PDF files and images in '$inputPdfFolder'..." # Logs the start of a new scan cycle.
+
+   
+    # Get new PDF files
+    $newPdfs = Get-ChildItem -Path $inputPdfFolder -Filter "*.pdf" -File # Gets new PDF files.
+
+    # Get new image files
+    $newImages = Get-ChildItem -Path $inputPdfFolder -Filter "*.png" -File # Gets new PNG image files.
+   
+
+    # --- Process PDF Files ---
+    if ($newPdfs.Count -eq 0) {
+        Write-Log -Message "No new PDF files found." -Level "INFO" # Logs if no new PDFs are found.
+    }
+    else {
+        foreach ($pdfFile in $newPdfs) {
+            Write-Log -Message "Found new PDF: $($pdfFile.Name)" -Level "INFO" # Logs the discovery of a new PDF.
+
+            # 2. Filter and take data from billing PDF files
+            $extractedData = Parse-BillingPdf -PdfPath $pdfFile.FullName # Parses the PDF to extract product data.
+
+            if ($extractedData) {
+                # 3. Import all data into one Excel file and check if it is already exist or not.
+                Update-ProductDatabase -NewProductsData $extractedData # Updates the Excel database with extracted data.
+
+                # 4. Move the processed PDF to the finished folder
+                Try {
+                    $destinationPath = Join-Path $finishedPdfFolder $pdfFile.Name # Constructs the destination path for the PDF.
+                    Move-Item -Path $pdfFile.FullName -Destination $destinationPath -Force # Moves the processed PDF.
+                    Write-Log -Message "Moved processed PDF to '$destinationPath'" -Level "SUCCESS" # Logs successful PDF move.
+                }
+                Catch {
+                    Write-Log -Message "Failed to move PDF '$($pdfFile.Name)': $($_.Exception.Message)" -Level "ERROR" # Logs error during PDF move.
+                }
+
+
+            }
+            else {
+                Write-Log -Message "Skipping Excel update and PDF move for '$($pdfFile.Name)' due to parsing failure." -Level "WARN" # Warns if PDF parsing failed.
+            }
+        }
+    }
+
+    # --- Process Image Files ---
+    if ($newImages.Count -eq 0) {
+        Write-Log -Message "No new image files found." -Level "INFO" # Logs if no new images are found.
+    }
+    else {
+        foreach ($imageFile in $newImages) {
+            Write-Log -Message "Found new Image: $($imageFile.Name)" -Level "INFO" # Logs the discovery of a new image.
+
+            # 5. Process images and link them to the database
+            Try {
+                Process-Images # Calls the function to process images.
+                Write-Log -Message "Processed image: $($imageFile.Name)" -Level "INFO" # Logs successful image processing (this log might be redundant as Process-Images already logs per image).
+
+                # Move the processed image to the finished folder (optional, but good practice)
+                $destinationImagePath = Join-Path $finishedImageFolder $imageFile.Name # Constructs destination path for the original image.
+                Move-Item -Path $imageFile.FullName -Destination $destinationImagePath -Force # Moves the original image to finished folder.
+                Write-Log -Message "Moved processed image to '$destinationImagePath'" -Level "SUCCESS" # Logs successful image move.
+            }
+            Catch {
+                Write-Log -Message "Failed to process or move image '$($imageFile.Name)': $($_.Exception.Message)" -Level "ERROR" # Logs error during image processing or move.
+            }
+        }
+    }
+
+    # Run analysis after processing all new PDFs and images in the current cycle
+    if ($newPdfs.Count -gt 0) {
+        # This condition ensures analysis runs only if there were new PDFs processed in the cycle.
+        Analyze-Data # Runs data analysis.
+    }
+
+
+    Write-Log -Message "Scan cycle complete. Sleeping for $($scanIntervalSeconds) seconds..." # Logs the end of the scan cycle and impending sleep.
+    Start-Sleep -Seconds $scanIntervalSeconds # Pauses the script for the defined interval.
+}
 
 #endregion
