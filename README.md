@@ -78,7 +78,7 @@ Hoàng Gia Thịnh
 ### Tools and Dependencies
 
 - [ImportExcel Module](https://github.com/dfinke/ImportExcel)
-- [iTextSharp library nugetURL]("https://www.nuget.org/api/v2/package/iTextSharp/5.5.13.3")
+- [iTextSharp library, nugetURL](https://www.nuget.org/api/v2/package/iTextSharp/5.5.13.3)
 
 ### Useful Resources
 
