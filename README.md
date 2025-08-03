@@ -37,7 +37,7 @@ All primary configuration settings are located at the beginning of the `test.ps1
 
 ```powershell
 # **IMPORTANT: Make sure this path match**
-$projectRoot = "C:\Users\hoang\Desktop\Test28_07_2025" # Base directory for all project files and folders.
+$projectRoot = "C:\Project" # Base directory for all project files and folders.
 
 $inputPdfFolder = $projectRoot # Directory where new PDF files are dropped for processing.
 $finishedPdfFolder = Join-Path $projectRoot "FinishedPdfs" # Directory where processed PDF files are moved.
@@ -51,7 +51,7 @@ $logFilePath = Join-Path $logFolder "ProjectLog.txt" # Full path to the main log
 
 # Image Processing Configuration
 $imageResizeWidth = 600 # pixels (Target width and height for resized images)
-$defaultImageWatermarkText = "Thinh" # Text to be applied as a watermark on processed images.
+$defaultImageWatermarkText = "Name" # Text to be applied as a watermark on processed images.
 
 # Scan interval for new PDFs and Images (in seconds)
 $scanIntervalSeconds = 30 # Time in seconds the script waits before scanning for new files again.
