@@ -279,4 +279,38 @@ function Write-Log {
     Add-Content -Path $logFilePath -Value $logEntry # Appends the log entry to the log file.
     Write-Host "$logEntry" # Outputs the log entry to the console.
 }
+
+function Create-ProjectFolders {
+    <#
+    .SYNOPSIS
+    Ensures all necessary project folders exist.
+    .DESCRIPTION
+    This function iterates through a predefined list of project-specific directories
+    and creates them if they do not already exist. It logs the creation of each folder
+    or throws an error if folder creation fails.
+    #>
+    Write-Host "Ensuring project folders exist..."
+    $folders = @(
+        $inputPdfFolder, # Input directory for PDFs.
+        $finishedPdfFolder, # Directory for finished PDFs.
+        $finishedImageFolder, # Directory for finished images.
+        $imagesWithWatermarkFolder, # Directory for watermarked images.
+        $sourceImagesFolder, # Source directory for images.
+        $logFolder, # Directory for logs.
+        $dataFolder # Directory for data files.
+    )
+    foreach ($folder in $folders) {
+        if (-not (Test-Path $folder)) {
+            try {
+                New-Item -ItemType Directory -Path $folder -Force | Out-Null # Creates the directory.
+                Write-Host "Created folder: $folder" # Confirms folder creation.
+            }
+            catch {
+                Write-Host "Failed to create folder $folder : $($_.Exception.Message)" -ForegroundColor Red # Reports creation failure.
+                throw # Throws the error to stop script execution if a critical folder cannot be created.
+            }
+        }
+    }
+    Write-Log -Message "Project folders checked." # Logs that folder check is complete.
+}
 #endregion
