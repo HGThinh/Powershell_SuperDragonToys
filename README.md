@@ -72,7 +72,7 @@ Hoàng Gia Thịnh
 ### Official Documentation
 
 - [PowerShell Documentation](https://docs.microsoft.com/en-us/powershell/)
-- [iTextSharp Documentation] (https://itextpdf.com/resources/api-documentation)
+- [iTextSharp Documentation](https://itextpdf.com/resources/api-documentation)
 - [System.Drawing Namespace](https://docs.microsoft.com/en-us/dotnet/api/system.drawing)
 
 ### Tools and Dependencies
@@ -82,9 +82,9 @@ Hoàng Gia Thịnh
 
 ### Useful Resources
 
-- [PowerShell: Resize-Image] (https://gist.github.com/someshinyobject/617bf00556bc43af87cd)
-- [Powershell use .NET .DrawImage in System.Drawing] (https://stackoverflow.com/questions/55001057/powershell-use-net-drawimage-in-system-drawing)
-- [How can I get PowerShell to read data in an Excel spreadsheet and apply to AD?] (https://community.spiceworks.com/t/how-can-i-get-powershell-to-read-data-in-an-excel-spreadsheet-and-apply-to-ad/818942/2)
-- [Claude AI for PDF text extraction] (https://claude.ai/share/7fa07356-e21f-40a3-9f11-2b115bd8561d)
-- [Gemini AI for comment base] (https://g.co/gemini/share/3848d71374af)
-- [Gemini AI for loop to check new images] (https://g.co/gemini/share/317764724bc4)
+- [PowerShell: Resize-Image](https://gist.github.com/someshinyobject/617bf00556bc43af87cd)
+- [Powershell use .NET .DrawImage in System.Drawing](https://stackoverflow.com/questions/55001057/powershell-use-net-drawimage-in-system-drawing)
+- [How can I get PowerShell to read data in an Excel spreadsheet and apply to AD?](https://community.spiceworks.com/t/how-can-i-get-powershell-to-read-data-in-an-excel-spreadsheet-and-apply-to-ad/818942/2)
+- [Claude AI for PDF text extraction](https://claude.ai/share/7fa07356-e21f-40a3-9f11-2b115bd8561d)
+- [Gemini AI for comment base](https://g.co/gemini/share/3848d71374af)
+- [Gemini AI for loop to check new images](https://g.co/gemini/share/317764724bc4)
