@@ -1,27 +1,65 @@
 # Requires -Modules ImportExcel
 # Requires -Version 5.1
 
+#region --- User Input with Defaults & Validation ---
+
+param(
+    [string]$projectRoot,
+    [string]$imageResizeWidth,
+    [string]$WatermarkText,
+    [string]$scanIntervalSeconds
+)
+
+# Mandatory: projectRoot must be provided and exist
+if (-not $projectRoot) {
+    $projectRoot = Read-Host "Please enter your path (project root)"
+}
+if (-not (Test-Path $projectRoot)) {
+    Write-Host "ERROR: Provided path does not exist: $projectRoot"
+    exit 1
+}
+if ([string]::IsNullOrWhiteSpace($projectRoot)) {
+    Write-Host "ERROR: You need to provide a path $projectRoot"
+    exit 1
+}
+
+# Optional: imageResizeWidth with default
+if (-not $imageResizeWidth -or [string]::IsNullOrWhiteSpace($imageResizeWidth)) {
+    $imageResizeWidth = Read-Host "Please enter image width in pixels (default: 600)"
+    if ([string]::IsNullOrWhiteSpace($imageResizeWidth)) {
+        $imageResizeWidth = "600"
+    }
+}
+
+# Optional: watermark text with default (blank)
+if (-not $WatermarkText -or [string]::IsNullOrWhiteSpace($WatermarkText)) {
+    $WatermarkText = Read-Host "Please enter watermark text (default: '')"
+    if ([string]::IsNullOrWhiteSpace($WatermarkText)) {
+        $WatermarkText = ""
+    }
+}
+
+# Optional: scanIntervalSeconds with default
+if (-not $scanIntervalSeconds -or [string]::IsNullOrWhiteSpace($scanIntervalSeconds)) {
+    $scanIntervalSeconds = Read-Host "Please enter scan interval in seconds (default: 30)"
+    if ([string]::IsNullOrWhiteSpace($scanIntervalSeconds)) {
+        $scanIntervalSeconds = "30"
+    }
+}
+
+# Convert numeric strings to integers
+$imageResizeWidth = [int]$imageResizeWidth
+$scanIntervalSeconds = [int]$scanIntervalSeconds
+
+#endregion
+
 #region --- Configuration ---
-
-# **IMPORTANT: Make sure this path match**
-$projectRoot = "C:\Users\hoang\Desktop\Test28_07_2025"
-
-$inputPdfFolder = $projectRoot # Directory where new PDF files are dropped for processing.
 $finishedPdfFolder = Join-Path $projectRoot "FinishedPdfs" # Directory where processed PDF files are moved.
 $finishedImageFolder = Join-Path $projectRoot "FinishedImages" # Directory where original image files are moved after processing.
 $imagesWithWatermarkFolder = Join-Path $projectRoot "ImagesWithWatermark" # Directory where watermarked and resized images are saved.
-$sourceImagesFolder = $projectRoot # Directory where new image files are dropped for processing.
 $logFolder = Join-Path $projectRoot "Logs" # Directory for log files.
-$dataFolder = $projectRoot # Directory for data files, including the Excel database.
-$excelDatabasePath = Join-Path $dataFolder "ProductDatabase.xlsx" # Full path to the Excel database file.
+$excelDatabasePath = Join-Path $projectRoot "ProductDatabase.xlsx" # Full path to the Excel database file.
 $logFilePath = Join-Path $logFolder "ProjectLog.txt" # Full path to the main log file.
-
-# Image Processing Configuration
-$imageResizeWidth = 600 # pixels
-$defaultImageWatermarkText = "Thinh" 
-
-# Scan interval for new PDFs and Images (in seconds)
-$scanIntervalSeconds = 30 # Time in seconds the script waits before scanning for new files again.
 
 #endregion
 
@@ -40,7 +78,13 @@ function Install-iTextSharp {
     .OUTPUTS
     [boolean] Returns $true if iTextSharp is successfully loaded, $false otherwise.
     #>
+    
+
+
+
     Write-Host "Setting up PDF text extraction..." -ForegroundColor Yellow
+    
+
     
     # First, try to find existing iTextSharp DLL
     $possiblePaths = @(
@@ -257,13 +301,20 @@ function Write-Log {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [AllowNull()]
         [string]$Message, # The message to be logged.
         [Parameter(Mandatory = $false)]
         [ValidateSet("INFO", "WARN", "ERROR", "SUCCESS", "DEBUG")]
         [string]$Level = "INFO" # The severity level of the log message.
     )
+    if ([string]::IsNullOrWhiteSpace($Message)) { return }
+
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss" # Formats the current date and time.
     $logEntry = "[$timestamp] [$Level] $Message" # Constructs the log entry string.
+    
+
+
 
     if (-not (Test-Path $logFolder)) {
         try {
@@ -291,13 +342,10 @@ function Create-ProjectFolders {
     #>
     Write-Host "Ensuring project folders exist..."
     $folders = @(
-        $inputPdfFolder, # Input directory for PDFs.
         $finishedPdfFolder, # Directory for finished PDFs.
         $finishedImageFolder, # Directory for finished images.
         $imagesWithWatermarkFolder, # Directory for watermarked images.
-        $sourceImagesFolder, # Source directory for images.
-        $logFolder, # Directory for logs.
-        $dataFolder # Directory for data files.
+        $logFolder # Directory for logs.
     )
     foreach ($folder in $folders) {
         if (-not (Test-Path $folder)) {
@@ -335,8 +383,15 @@ function Parse-BillingPdf {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$PdfPath # Path to the PDF file to parse.
     )
+    # Check file exists
+    if (-not (Test-Path $PdfPath)) {
+        Write-Log -Message "PDF file not found: $PdfPath" -Level "ERROR"
+        return $null
+    }
+
     Write-Log -Message "Attempting to parse PDF: $PdfPath" # Logs the start of PDF parsing.
 
     Try {
@@ -447,6 +502,8 @@ function Update-ProductDatabase {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [ValidateNotNullOrEmpty()]
         [array]$NewProductsData # Array of new product data to be added/updated.
     )
     Write-Log -Message "Updating product database..." # Logs the start of database update.
@@ -548,8 +605,8 @@ function Process-Image {
         [string]$InputPath, # Path to the original image file.
         [Parameter(Mandatory = $true, HelpMessage = "Path for the output image file where the processed image will be saved")]
         [string]$OutputPath, # Path where the processed image will be saved.
-        [string]$WatermarkText = "", # Optional text watermark.
-        [int]$TargetSize = 600 # Target size for the square output image.
+        [string]$WatermarkText, # Optional text watermark.
+        [int]$TargetSize # Target size for the square output image.
     )
     $originalImage = $null # Variable to hold the original image object.
     $finalImage = $null # Variable to hold the processed image object.
@@ -583,9 +640,11 @@ function Process-Image {
             $font = New-Object System.Drawing.Font("Arial", 20, [System.Drawing.FontStyle]::Bold) # Creates a font for the watermark.
             $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(128, 0, 0, 0)) # Creates a semi-transparent black brush.
             $textSize = $graphics.MeasureString($WatermarkText, $font) # Measures the size of the watermark text.
-            $watermarkX = 20 # X position for the watermark.
-            $watermarkY = $TargetSize - $textSize.Height - 20 # Y position for the watermark (bottom-left).
+            $padding = 20 # Padding around the watermark text.
+            $watermarkX = $TargetSize - $textSize.Width - $padding # X position for the watermark (bottom-right).
+            $watermarkY = $TargetSize - $textSize.Height - $padding # Y position for the watermark (bottom-left).
             $graphics.DrawString($WatermarkText, $font, $brush, $watermarkX, $watermarkY) # Draws the watermark text.
+            Write-Log -Message "Processed image using System.Drawing: Watermark added: '$WatermarkText'." -Level "INFO" # Logs watermark addition.
         }
 
         $finalImage.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Png) # Saves the processed image as PNG.
@@ -620,10 +679,10 @@ function Process-Images {
     #>
     Write-Log -Message "Starting image processing..." # Logs the start of image processing.
     $imagesProcessedCount = 0 # Counter for processed images.
-    $imageFiles = Get-ChildItem -Path $sourceImagesFolder -Filter "*.png" -File # Gets all PNG files in the source folder.
+    $imageFiles = Get-ChildItem -Path $projectRoot -Filter "*.png" -File # Gets all PNG files in the source folder.
 
     if ($imageFiles.Count -eq 0) {
-        Write-Log -Message "No image files found in '$sourceImagesFolder' to process." -Level "INFO" # Logs if no images are found.
+        Write-Log -Message "No image files found in '$projectRoot' to process." -Level "INFO" # Logs if no images are found.
         return # Exits the function.
     }
 
@@ -640,7 +699,7 @@ function Process-Images {
         Try {
             Process-Image -InputPath $imageFile.FullName `
                 -OutputPath $outputImagePath `
-                -WatermarkText $defaultImageWatermarkText `
+                -WatermarkText $WatermarkText `
                 -TargetSize $imageResizeWidth # Calls Process-Image to handle resizing and watermarking.
             
             Write-Log -Message "Image processed: '$($imageFile.Name)' -> '$($outputImagePath)'." -Level "INFO" # Logs successful image processing.
@@ -825,18 +884,18 @@ Write-Log -Message "Script started at $(Get-Date)" -Level "INFO" # Logs the scri
 
 # Initial notification
 Write-Host "PowerShell automation script is running. Press Ctrl+C to stop." -ForegroundColor Cyan # Provides user instructions.
-Write-Host "Monitoring '$inputPdfFolder' for new PDF files every $($scanIntervalSeconds) seconds." -ForegroundColor Cyan # Informs about monitoring interval.
+Write-Host "Monitoring '$projectRoot' for new PDF files every $($scanIntervalSeconds) seconds." -ForegroundColor Cyan # Informs about monitoring interval.
 
 # Main loop to scan for new PDF files
 while ($true) {
-    Write-Log -Message "Scanning for new PDF files and images in '$inputPdfFolder'..." # Logs the start of a new scan cycle.
+    Write-Log -Message "Scanning for new PDF files and images in '$projectRoot'..." # Logs the start of a new scan cycle.
 
    
     # Get new PDF files
-    $newPdfs = Get-ChildItem -Path $inputPdfFolder -Filter "*.pdf" -File # Gets new PDF files.
+    $newPdfs = Get-ChildItem -Path $projectRoot -Filter "*.pdf" -File # Gets new PDF files.
 
     # Get new image files
-    $newImages = Get-ChildItem -Path $inputPdfFolder -Filter "*.png" -File # Gets new PNG image files.
+    $newImages = Get-ChildItem -Path $projectRoot -Filter "*.png" -File # Gets new PNG image files.
    
 
     # --- Process PDF Files ---
