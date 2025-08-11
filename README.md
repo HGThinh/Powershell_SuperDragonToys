@@ -31,32 +31,6 @@ This PowerShell script automates the process of extracting product information f
 - **iTextSharp (Optional but Recommended)**: The script attempts to automatically install or locate the `iTextSharp` library for PDF text extraction. If `iTextSharp` cannot be installed or found, the script will fall back to using Microsoft Word or Adobe Reader COM objects, which require the respective applications to be installed on the system.
   - For reliable PDF parsing, ensure your system has internet access for NuGet package installation or a compatible version of Microsoft Word or Adobe Acrobat/Reader.
 
-## Configuration
-
-All primary configuration settings are located at the beginning of the `Data_automation.ps1` script. You **must** adjust these paths and settings to match your environment.
-
-```powershell
-# **IMPORTANT: Make sure this path match**
-$projectRoot = "C:\Project" # Base directory for all project files and folders.
-
-$inputPdfFolder = $projectRoot # Directory where new PDF files are dropped for processing.
-$finishedPdfFolder = Join-Path $projectRoot "FinishedPdfs" # Directory where processed PDF files are moved.
-$finishedImageFolder = Join-Path $projectRoot "FinishedImages" # Directory where original image files are moved after processing.
-$imagesWithWatermarkFolder = Join-Path $projectRoot "ImagesWithWatermark" # Directory where watermarked and resized images are saved.
-$sourceImagesFolder = $projectRoot # Directory where new image files are dropped for processing.
-$logFolder = Join-Path $projectRoot "Logs" # Directory for log files.
-$dataFolder = $projectRoot # Directory for data files, including the Excel database.
-$excelDatabasePath = Join-Path $dataFolder "ProductDatabase.xlsx" # Full path to the Excel database file.
-$logFilePath = Join-Path $logFolder "ProjectLog.txt" # Full path to the main log file.
-
-# Image Processing Configuration
-$imageResizeWidth = 600 # pixels (Target width and height for resized images)
-$defaultImageWatermarkText = "Name" # Text to be applied as a watermark on processed images.
-
-# Scan interval for new PDFs and Images (in seconds)
-$scanIntervalSeconds = 30 # Time in seconds the script waits before scanning for new files again.
-```
-
 ## Author
 
 Hoàng Gia Thịnh
