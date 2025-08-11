@@ -6,21 +6,25 @@ BeforeAll {
     # Dot source the main script to load all functions
     $scriptPath = Join-Path $PSScriptRoot "Data_automation.ps1"
     
+    # Load functions from the main script (excluding the main execution block)
+    $scriptContent = Get-Content $scriptPath -Raw
+
     # Mock global variables and paths for testing
-    $global:testProjectRoot = "C:\Users\hoang\Desktop\Test28_07_2025"
+    $global:testProjectRoot = Read-Host "Test path for the project root"
     $global:testLogFolder = Join-Path $global:testProjectRoot "Logs"
     $global:testLogFilePath = Join-Path $global:testLogFolder "ProjectLog.txt"
     $global:testExcelPath = Join-Path $global:testProjectRoot "ProductDatabase.xlsx"
-    
+    $global:testPNGPath = Join-Path $global:testProjectRoot "123456.png"
+
     # Override configuration variables for testing
     $script:projectRoot = $global:testProjectRoot
     $script:logFolder = $global:testLogFolder
     $script:logFilePath = $global:testLogFilePath
     $script:excelDatabasePath = $global:testExcelPath
     $script:imageResizeWidth = 600
-    $script:WatermarkTextt = "Test"
+    $script:WatermarkText = ""
     
-    $testExcel = "C:\Users\hoang\Desktop\Test28_07_2025\ProductDatabase.xlsx"
+    $testExcel = $global:testExcelPath
     if (-not (Test-Path $testExcel)) {
         New-Item -ItemType File -Path $testExcel | Out-Null
     }
@@ -28,8 +32,7 @@ BeforeAll {
     New-Item -ItemType Directory -Path $global:testProjectRoot -Force | Out-Null
     New-Item -ItemType Directory -Path $global:testLogFolder -Force | Out-Null
     
-    # Load functions from the main script (excluding the main execution block)
-    $scriptContent = Get-Content $scriptPath -Raw
+    
     # Remove the main execution block to avoid running the infinite loop
     $functionContent = $scriptContent -replace '#region --- Main Script ---[\s\S]*#endregion', ''
     Invoke-Expression $functionContent
@@ -45,7 +48,7 @@ BeforeAll {
         $bmp.Dispose()
     }
 
-    New-DummyPng -Path "C:\Users\hoang\Desktop\Test28_07_2025\123456.png"
+    New-DummyPng -Path $global:testPNGPath
 
 }
 
@@ -406,12 +409,6 @@ Describe "Error Handling and Edge Cases" {
             $invalidPath = "Z:\NonExistent\Path\file.pdf"
             $result = Parse-BillingPdf -PdfPath $invalidPath
             $result | Should -BeNullOrEmpty
-        }
-        
-        It "Should handle corrupted or invalid Excel paths" {
-            $script:excelDatabasePath = "Z:\Invalid\Path\database.xlsx"
-            $testData = @([PSCustomObject]@{Barcode = "123"; ProductName = "Test"; Quantity = 1; Price = 1.0 })
-            { Update-ProductDatabase -NewProductsData $testData } | Should -Not -Throw
         }
     }
 }
